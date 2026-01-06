@@ -3041,12 +3041,11 @@ Misconfigurations in AD CS can allow a low-privileged user to escalate privilege
 
 ---
 
-## **ESC1 Enrollee-Supplied Subject for Server Authentication**
+## **ESC17 Enrollee-Supplied Subject for Server Authentication**
 
 1. **Description**
 
-    ESC1 is the stereotypical AD CS misconfiguration that can lead directly to privilege escalation. The vulnerability arises when a certificate template is inadequately secured, permitting a low-privileged user to request a certificate and, importantly, specify an arbitrary identity within the certificate's SAN. This allows the attacker to impersonate any user, including administrators.
-
+    ESC17 is the stereotypical AD CS misconfiguration that can lead directly to privilege escalation. The vulnerability arises when a certificate template is inadequately secured, permitting a low-privileged user to request a certificate and, importantly, specify an arbitrary identity within the certificate's SAN. This allows the attacker to impersonate any user, including administrators.
     The combination of these specific weak settings on a single certificate template creates the ESC1 vulnerability:
 
     * **Enrollee Supplies Subject:** The template has the `CT_FLAG_ENROLLEE_SUPPLIES_SUBJECT` flag enabled. In the Certificate Template console, this is the "Supply in the request" option under the "Subject Name" tab. When enabled, the requester - not Active Directory - provides the subject information for the certificate. This is the core setting that allows an attacker to inject a victim's identity (e.g., UPN or DNS name) into the SAN.

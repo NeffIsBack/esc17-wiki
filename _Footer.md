@@ -1,0 +1,1 @@
+If you find this project useful, consider [sponsoring it on GitHub](https://github.com/sponsors/ly4k) to support continued development.

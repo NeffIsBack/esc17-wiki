@@ -3045,19 +3045,19 @@ Misconfigurations in AD CS can allow a low-privileged user to escalate privilege
 
 1. **Description**
 
-    ESC17 is the stereotypical AD CS misconfiguration that can lead directly to privilege escalation. The vulnerability arises when a certificate template is inadequately secured, permitting a low-privileged user to request a certificate and, importantly, specify an arbitrary identity within the certificate's SAN. This allows the attacker to impersonate any user, including administrators.
-    The combination of these specific weak settings on a single certificate template creates the ESC1 vulnerability:
+    ESC17 is similar to ESC1 but targets templates that allow "Server Authentication". The outcome of an exploitation depends on further prerequisites in the targeted domain (see below). The vulnerability arises when a certificate template is inadequately secured, permitting a low-privileged user to request a certificate and, importantly, specify an arbitrary identity within the certificate's SAN. This allows the attacker to impersonate any server, including administrative ones such as WSUS.
+    The combination of these specific weak settings on a single certificate template creates the ESC17 vulnerability:
 
     * **Enrollee Supplies Subject:** The template has the `CT_FLAG_ENROLLEE_SUPPLIES_SUBJECT` flag enabled. In the Certificate Template console, this is the "Supply in the request" option under the "Subject Name" tab. When enabled, the requester - not Active Directory - provides the subject information for the certificate. This is the core setting that allows an attacker to inject a victim's identity (e.g., UPN or DNS name) into the SAN.
-    * **Authentication EKU:** The template includes an EKU that permits authentication. Common EKUs that enable this are "Client Authentication" (OID `1.3.6.1.5.5.7.3.2`), "Smart Card Logon" (OID `1.3.6.1.4.1.311.20.2.2`), "PKINIT Client Authentication" (OID `1.3.6.1.5.2.3.4`), or the overly permissive "Any Purpose" (OID `2.5.29.37.0`). A certificate with such an EKU can be used for network logons.
+    * **Server Authentication EKU:** The template includes an EKU that permits server authentication. Common EKUs that enable this are "Server Authentication" (OID `1.3.6.1.5.5.7.3.1`), the overly permissive "Any Purpose" (OID `2.5.29.37.0`) or no specified EKU at all (which implies any purpose). A certificate with such an EKU can be used for the server component in a TLS-encrypted communication (e.g., an HTTPS server).
     * **Permissive Enrollment Rights:** Low-privileged users or broad groups like "Domain Users" or "Authenticated Users" are granted "Enroll" permissions on the template's security settings. This defines who can request certificates from this template.
     * **No Effective Security Gates:** The template does not enforce manager approval (the "CA certificate manager approval" option in "Issuance Requirements") nor requires authorized signatures (also known as enrollment agent signatures). The absence of these controls means qualifying requests are automatically processed and certificates issued without additional review.
 
-    When these conditions are all met, any user with enrollment rights can submit a CSR for this template. In the CSR, they can specify an arbitrary UPN in the SAN (e.g., `administrator@corp.local`) and/or a SID in the `szOID_NTDS_CA_SECURITY_EXT` (OID `1.3.6.1.4.1.311.25.2`) or via a specific SAN URL format if the SID extension is not used. The CA, trusting the template's insecure configuration, issues a certificate that appears to belong to the specified privileged account. The attacker can then use this certificate to authenticate via Kerberos PKINIT or Schannel, effectively gaining the privileges of the impersonated user.
+    When these conditions are all met, any user with enrollment rights can submit a CSR for this template. In the CSR, they can specify an arbitrary DNS name in the SAN (e.g., `wsus.corp.local`) and/or a SID in the `szOID_NTDS_CA_SECURITY_EXT` (OID `1.3.6.1.4.1.311.25.2`) or via a specific SAN URL format if the SID extension is not used. The CA, trusting the template's insecure configuration, issues a certificate that appears to belong to the specified DNS name. The attacker can then use this certificate to impersonate a legitimate server, e.g., the internal WSUS server used for distribution of Windows updates. Depending on the specific service, an attacker could learn (plaintext) passwords for privileged accounts, gain access to NTLM hashes (e.g., for relaying) or even abuse the privileges of the service. When ESC17 was first identified, it was used in combination with the WSUS service to achieve code execution on targeted Windows systems. 
 
-    This misconfiguration often occurs when administrators duplicate built-in templates (like "User" or "Machine") and modify them to allow "Supply in request", perhaps for compatibility with an application or device that requires specific subject names, without fully understanding the security ramifications. Another common scenario is duplicating a template like "WebServer" or "SubCA", which already has "Supply in request" enabled by default, and then adding a client authentication EKU to it. It's important to note that in an enterprise CA environment, new templates are typically created by duplicating an existing one, not from scratch. Due to its relative simplicity to exploit and its high impact, ESC1 is a frequently discovered and exploited AD CS vulnerability.
+    This misconfiguration often occurs when administrators direclty use or clone templates like "WebServer" or "SubCA", which already have "Supply in request" enabled by default. In ESC1 scenarios, this setting may often be an oversight and an undesired misconfiguration. In contrast, templates vulnerable against ESC17 are likely used for some kind of server authentication (e.g., securing an internal web application) and therefore use the combination of "Server Authentication" and "Suppy in request" deliberately. 
 
-2. **Identification with Certipy**
+3. **Identification with Certipy**
 
     Certipy's `find` command is used to enumerate certificate templates and identify those vulnerable to ESC1. It specifically checks for templates where the "Enrollee Supplies Subject" option is enabled, an EKU suitable for authentication is present, manager approval and authorized signatures are not required, and it lists the principals (users/groups) that have enrollment rights. The `[+] User Enrollable Principals` field in the output for a template will indicate if the current user context running Certipy has enrollment rights, and through which group membership these rights are granted.
 
@@ -3106,7 +3106,7 @@ Misconfigurations in AD CS can allow a low-privileged user to escalate privilege
     * `[+] User Enrollable Principals` showing a group like `CORP.LOCAL\Domain Users` or any group the attacker is a member of. This confirms the attacker has the necessary rights to request a certificate from this template.
     * `Requires Manager Approval : False` and `Authorized Signatures Required : 0` confirm the absence of preventative issuance controls.
 
-3. **Exploitation with Certipy**
+4. **Exploitation with Certipy**
 
     Exploiting an ESC1 vulnerability typically involves two main steps:
 
@@ -3184,7 +3184,7 @@ Misconfigurations in AD CS can allow a low-privileged user to escalate privilege
 
     *Note on targeting machine accounts:* If the goal is to impersonate a machine account (e.g., a Domain Controller like `DC01$`), the `-dns` parameter should be used with the FQDN of the machine (e.g., `-dns 'dc01.corp.local'`) instead of `-upn`. This correctly populates the dNSName field in the SAN, which is typically used for machine identity. The `-sid` parameter remains the same, specifying the machine account's SID. While using `-upn` with a machine account's UPN (e.g., `DC01$@corp.local`) might sometimes work, `-dns` is the more appropriate SAN type for machine identities.
 
-4. **Mitigations**
+5. **Mitigations**
 
     To prevent ESC1 vulnerabilities, implement the following security measures on your certificate templates:
 

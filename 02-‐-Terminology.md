@@ -34,7 +34,7 @@ A **Certificate Template** is a predefined set of rules and settings, stored as 
 * **Cryptography:** Key length, private key exportability, cryptographic service provider (CSP).
 * **Validity Period & Renewal:** How long the certificate is valid and when renewal can occur.
 
-Misconfigurations in certificate templates (e.g., allowing enrollee-supplied subjects for authentication templates, overly permissive enrollment rights, or weak issuance requirements) are the root cause of many AD CS vulnerabilities, such as ESC1, ESC2, ESC3, ESC9, ESC13, and ESC15. Template objects themselves have ACLs, and if these are weak, it can lead to ESC4 (Template Hijacking).
+Misconfigurations in certificate templates (e.g., allowing enrollee-supplied subjects for authentication templates, overly permissive enrollment rights, or weak issuance requirements) are the root cause of many AD CS vulnerabilities, such as ESC1, ESC2, ESC3, ESC9, ESC13, ESC15 and ESC17. Template objects themselves have ACLs, and if these are weak, it can lead to ESC4 (Template Hijacking).
 
 #### **Certificate Signing Request (CSR)**
 
@@ -44,7 +44,7 @@ A **Certificate Signing Request (CSR)** is a formal message sent from an applica
 * Identifying information for the applicant (e.g., intended subject name).
 * Requested certificate extensions (like Key Usage, EKUs, SANs).
 
-The CSR is digitally signed by the applicant using their corresponding private key. This signature proves to the CA that the applicant possesses the private key associated with the public key in the CSR. Upon receiving and validating the CSR against its policies (often defined by a certificate template), the CA issues and signs the actual certificate. Tools like Certipy generate CSRs as part of the certificate request process (`certipy req`). Attackers may attempt to manipulate CSR content, for example, by injecting arbitrary SANs (if permitted by ESC1 or ESC6) or malicious Application Policies (in ESC15).
+The CSR is digitally signed by the applicant using their corresponding private key. This signature proves to the CA that the applicant possesses the private key associated with the public key in the CSR. Upon receiving and validating the CSR against its policies (often defined by a certificate template), the CA issues and signs the actual certificate. Tools like Certipy generate CSRs as part of the certificate request process (`certipy req`). Attackers may attempt to manipulate CSR content, for example, by injecting arbitrary SANs (if permitted by ESC1, ESC6 or ESC17) or malicious Application Policies (in ESC15).
 
 #### **Certificate Extensions**
 
@@ -73,6 +73,8 @@ The presence or absence of specific EKUs, or the overly permissive "Any Purpose"
 The **Subject Alternative Name (SAN)** extension (OID `2.5.29.17`) allows various additional identities to be bound to the subject of a certificate, supplementing or replacing the information in the certificate's Subject field. Common SAN entry types include DNS names (for servers), User Principal Names (UPNs) for users, RFC822 Names (email addresses), and IP addresses.
 
 In Active Directory certificate-based authentication, the UPN value present in a certificate's SAN is a primary identifier used by the KDC (for Kerberos PKINIT) and Schannel to map the certificate to a user account in AD. If an attacker can control the SAN contents of a certificate request (e.g., due to an ESC1 or ESC6 misconfiguration) and inject the UPN of a privileged user, they can obtain a certificate that allows them to impersonate that user. More recently, a specific SAN URL format (`URL=tag:microsoft.com,2022-09-14:sid:<VALUE>`) can be used to embed a SID, which is relevant for ESC6+ESC9/ESC16 attacks.
+
+In the ESC17 attack, control of the SAN is used to request certificates for arbitrary domain names that are used when establishing TLS channels. Current attacks target the WSUS server, which is also a member of Active Directory, but in theory, (almost) any domain name could be targeted in this way (usual TLS protections such as certificate pinning still apply).
 
 > **Note:**
 > Fully patched environments prioritize the **SID Extension** (`szOID_NTDS_CA_SECURITY_EXT`) for mapping if present. If the SID extension is absent, the KDC/Schannel may fall back to SAN UPNs or other methods, depending on configuration (see ESC9, ESC16, and DC strong mapping settings). For more information, refer to the [**Resources**](03-%E2%80%90-Resources) section.
@@ -110,4 +112,4 @@ The **Key Distribution Center (KDC)** is a critical network service that runs on
 
 #### **ESC (Escalation) Abuse Cases**
 
-**ESC** is a nomenclature that refers to "Escalation" abuse cases within Active Directory Certificate Services. This system of categorizing distinct AD CS misconfiguration attack scenarios was notably introduced and popularized by researchers at SpecterOps. These scenarios are typically labeled ESC1 through ESC16 (as of early 2025), with each number representing a specific type of misconfiguration or vulnerability pattern that can be exploited for privilege escalation, information disclosure, or persistence within an Active Directory environment. Certipy is a tool designed to help identify and, in many cases, exploit these ESC vulnerabilities.
+**ESC** is a nomenclature that refers to "Escalation" abuse cases within Active Directory Certificate Services. This system of categorizing distinct AD CS misconfiguration attack scenarios was notably introduced and popularized by researchers at SpecterOps. These scenarios are typically labeled ESC1 through ESC17 (as of early 2026), with each number representing a specific type of misconfiguration or vulnerability pattern that can be exploited for privilege escalation, information disclosure, or persistence within an Active Directory environment. Certipy is a tool designed to help identify and, in many cases, exploit these ESC vulnerabilities.

@@ -3057,7 +3057,7 @@ Misconfigurations in AD CS can allow a low-privileged user to escalate privilege
 
     This misconfiguration often occurs when administrators direclty use or clone templates like "WebServer" or "SubCA", which already have "Supply in request" enabled by default. In ESC1 scenarios, this setting may often be an oversight and an undesired misconfiguration. In contrast, templates vulnerable against ESC17 are likely used for some kind of server authentication (e.g., securing an internal web application) and therefore use the combination of "Server Authentication" and "Suppy in request" deliberately. 
 
-3. **Identification with Certipy**
+2. **Identification with Certipy**
 
     Certipy's `find` command is used to enumerate certificate templates and identify those vulnerable to ESC1. It specifically checks for templates where the "Enrollee Supplies Subject" option is enabled, an EKU suitable for authentication is present, manager approval and authorized signatures are not required, and it lists the principals (users/groups) that have enrollment rights. The `[+] User Enrollable Principals` field in the output for a template will indicate if the current user context running Certipy has enrollment rights, and through which group membership these rights are granted.
 
@@ -3106,7 +3106,7 @@ Misconfigurations in AD CS can allow a low-privileged user to escalate privilege
     * `[+] User Enrollable Principals` showing a group like `CORP.LOCAL\Domain Users` or any group the attacker is a member of. This confirms the attacker has the necessary rights to request a certificate from this template.
     * `Requires Manager Approval : False` and `Authorized Signatures Required : 0` confirm the absence of preventative issuance controls.
 
-4. **Exploitation with Certipy**
+3. **Exploitation with Certipy**
 
     Exploiting an ESC1 vulnerability typically involves two main steps:
 
@@ -3184,7 +3184,7 @@ Misconfigurations in AD CS can allow a low-privileged user to escalate privilege
 
     *Note on targeting machine accounts:* If the goal is to impersonate a machine account (e.g., a Domain Controller like `DC01$`), the `-dns` parameter should be used with the FQDN of the machine (e.g., `-dns 'dc01.corp.local'`) instead of `-upn`. This correctly populates the dNSName field in the SAN, which is typically used for machine identity. The `-sid` parameter remains the same, specifying the machine account's SID. While using `-upn` with a machine account's UPN (e.g., `DC01$@corp.local`) might sometimes work, `-dns` is the more appropriate SAN type for machine identities.
 
-5. **Mitigations**
+4. **Mitigations**
 
     To prevent ESC1 vulnerabilities, implement the following security measures on your certificate templates:
 

@@ -3059,11 +3059,16 @@ Misconfigurations in AD CS can allow a low-privileged user to escalate privilege
 
 2. **Identification with Certipy**
 
-    Certipy's `find` command is used to enumerate certificate templates and identify those vulnerable to ESC1. It specifically checks for templates where the "Enrollee Supplies Subject" option is enabled, an EKU suitable for authentication is present, manager approval and authorized signatures are not required, and it lists the principals (users/groups) that have enrollment rights. The `[+] User Enrollable Principals` field in the output for a template will indicate if the current user context running Certipy has enrollment rights, and through which group membership these rights are granted.
+    Two prerequisites are required to actively exploit the ESC17 vulnerability:
+    
+    * A template the meets the previously described criteria
+    * A service that grants the attacker an advantage when impersonated. At the time of writing two attacks are known that both impersonate the Windows Server Update Service (WSUS) and:
+        * Relay incoming WSUS update requests to LDAP to impersonate the requesting client.
+        * Server a malicious Update to the requesting client achieving command execution.
 
     **Expected Output Snippet:**
 
-    Within the "Certificate Templates" section of the `certipy find` output, vulnerable templates are clearly marked, with "ESC1" listed under the `[!] Vulnerabilities` heading.
+    Certipy marks such vulnerable templates as previously described with the "ESC17" flag.
 
     ```text
     Certificate Authorities
@@ -3095,7 +3100,9 @@ Misconfigurations in AD CS can allow a low-privileged user to escalate privilege
         ...
         [+] User Enrollable Principals      : CORP.LOCAL\Domain Users
         [!] Vulnerabilities
-          ESC1                              : Enrollee supplies subject and template allows client authentication.
+          ESC17                             : Enrollee supplies subject and template allows server authentication.
+        [*] Remarks
+          ESC17                              : Other prerequisites may be required for this to be exploitable. See the wiki for more details.
     ```
 
     **Key indicators to look for in the output for a specific template:**

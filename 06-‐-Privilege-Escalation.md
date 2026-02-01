@@ -3057,18 +3057,16 @@ Misconfigurations in AD CS can allow a low-privileged user to escalate privilege
 
     This misconfiguration often occurs when administrators directly use or clone templates like "WebServer" or "SubCA", which already have "Supply in request" enabled by default. In ESC1 scenarios, this setting may often be an oversight and an undesired misconfiguration. In contrast, templates vulnerable against ESC17 are likely used for some kind of server authentication (e.g., securing an internal web application) and therefore use the combination of "Server Authentication" and "Supply in request" deliberately. 
 
-2. **Identification with Certipy**
+2. **Identification**
 
-    Two prerequisites are required to actively exploit the ESC17 vulnerability:
-    
-    * A template the meets the previously described criteria
-    * A service that grants the attacker an advantage when impersonated. At the time of writing two attacks are known that both impersonate the Windows Server Update Service (WSUS) and:
-        * Relay incoming WSUS update requests to LDAP to impersonate the requesting client.
-        * Server a malicious Update to the requesting client achieving command execution.
+   A full ESC17 attack chain does not rely solely on identifying a vulnerable template. One also needs some way to make use of a certificate by finding a desirable service (see "Further prerequisites" down below).
+
+   The first part, identification of a vulnerable template, can be achieved by using Certipy's `find` command in a very similar fashion to the way that ESC1 works.
+   Certipy will specifically check for templates where the "Enrollee Supplies Subject" option is enabled, an EKU suitable for sever authentication is present, manager approval and authorized signatures are not required, and it lists the principals (users/groups) that have enrollment rights. The `[+] User Enrollable Principals` field in the output for a template will indicate if the current user context running Certipy has enrollment rights, and through which group membership these rights are granted.
 
     **Expected Output Snippet:**
 
-    Certipy marks such vulnerable templates as previously described with the "ESC17" flag.
+    Within the "Certificate Templates" section of the `certipy find` output, vulnerable templates are clearly marked, with "ESC17" listed under the`[!] Vulnerabilities` heading.
 
     ```text
     Certificate Authorities
@@ -3082,14 +3080,11 @@ Misconfigurations in AD CS can allow a low-privileged user to escalate privilege
         Display Name                        : VulnTemplate
         Certificate Authorities             : CORP-CA
         Enabled                             : True
-        Client Authentication               : True
         ...
         Enrollee Supplies Subject           : True
         Certificate Name Flag               : EnrolleeSuppliesSubject
         ...
-        Extended Key Usage                  : Client Authentication
-                                              Secure Email
-                                              Encrypting File System
+        Extended Key Usage                  : Server Authentication
         Requires Manager Approval           : False
         ...
         Authorized Signatures Required      : 0
@@ -3107,13 +3102,22 @@ Misconfigurations in AD CS can allow a low-privileged user to escalate privilege
 
     **Key indicators to look for in the output for a specific template:**
 
-    * `[!] Vulnerabilities ESC1 : Enrollee supplies subject and template allows client authentication.` This explicitly flags the vulnerability.
+    * `[!] Vulnerabilities ESC17 : Enrollee supplies subject and template allows server authentication.` This explicitly flags the vulnerability.
     * `Enrollee Supplies Subject : True` This confirms the setting allowing attacker-defined subjects.
-    * `Client Authentication : True` (or other authentication EKUs listed in `Extended Key Usage`) This confirms the certificate can be used for logon.
+    * `Extended Key Usage : Server Authentication` (or other relevant authentication EKUs) This confirms the certificate can be used for server impersonation.
     * `[+] User Enrollable Principals` showing a group like `CORP.LOCAL\Domain Users` or any group the attacker is a member of. This confirms the attacker has the necessary rights to request a certificate from this template.
     * `Requires Manager Approval : False` and `Authorized Signatures Required : 0` confirm the absence of preventative issuance controls.
+  
+    **Further prerequisites**
 
-3. **Exploitation with Certipy**
+   While the above-mentioned Certipy output confirms the general presence of a vulnerable template, its applicability for an offensive purpose goes beyond ADCS on its own. One also needs to identify a service that grants the attacker an advantage when impersonated **and** there must be some means to actually impersonate this service (think _arp spoofing_, _DNS poisoning_, potentially even _phishing_, ...).  At the time of writing, two attacks are publicly documented that both impersonate the Windows Server Update Service (WSUS) and:
+   
+   * Relay incoming WSUS update requests to LDAP to impersonate the requesting client.
+   * Serve a malicious update to the requesting client achieving command execution.
+
+   Depending on the assignment, many other potential targets are possible. Essentially, an attacker needs to identify both promising domain accounts they would like to compromise and (TLS-protected) servers where they log into using their domain credentials.
+
+2. **Exploitation with Certipy**
 
     Exploiting an ESC1 vulnerability typically involves two main steps:
 
@@ -3191,7 +3195,7 @@ Misconfigurations in AD CS can allow a low-privileged user to escalate privilege
 
     *Note on targeting machine accounts:* If the goal is to impersonate a machine account (e.g., a Domain Controller like `DC01$`), the `-dns` parameter should be used with the FQDN of the machine (e.g., `-dns 'dc01.corp.local'`) instead of `-upn`. This correctly populates the dNSName field in the SAN, which is typically used for machine identity. The `-sid` parameter remains the same, specifying the machine account's SID. While using `-upn` with a machine account's UPN (e.g., `DC01$@corp.local`) might sometimes work, `-dns` is the more appropriate SAN type for machine identities.
 
-4. **Mitigations**
+3. **Mitigations**
 
     To prevent ESC1 vulnerabilities, implement the following security measures on your certificate templates:
 

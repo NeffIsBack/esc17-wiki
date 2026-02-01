@@ -3057,7 +3057,7 @@ Misconfigurations in AD CS can allow a low-privileged user to escalate privilege
 
     This misconfiguration often occurs when administrators directly use or clone templates like "WebServer" or "SubCA", which already have "Supply in request" enabled by default. In ESC1 scenarios, this setting may often be an oversight and an undesired misconfiguration. In contrast, templates vulnerable against ESC17 are likely used for some kind of server authentication (e.g., securing an internal web application) and therefore use the combination of "Server Authentication" and "Supply in request" deliberately.
 
-2. **Identification**
+2. **Identification with Certipy**
 
    A full ESC17 attack chain does not rely solely on identifying a vulnerable template. One also needs some way to make use of a certificate by finding a desirable service (see "Further prerequisites" down below).
 

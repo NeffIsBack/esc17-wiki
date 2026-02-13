@@ -3119,12 +3119,21 @@ Misconfigurations in AD CS can allow a low-privileged user to escalate privilege
 
 3. **Exploitation**
 
-    Exploiting an ESC17 vulnerability typically involves two main steps:
+    Exploiting an ESC17 vulnerability typically involves three main steps:
 
-    1. Requesting a certificate using the vulnerable template, injecting the identity of a server to be impersonated.
-    2. Using the obtained certificate to impersonate the server and attack the actual target.
+    1. Identifying a service that the attacker can impersonate (e.g., WSUS) and that provides some kind of advantage when impersonated (e.g., relaying or serving malicious updates).
+    2. Requesting a certificate using the vulnerable template, injecting the identity of a server to be impersonated.
+    3. Using the obtained certificate to impersonate the server and attack the actual target.
 
-    * **Step 1: Request the certificate for the server to be impersonated.**
+    * **Step 1: Identifying a service to impersonate.**
+
+        The attacker identifies a service that they can impersonate using a certificate with the "Server Authentication" EKU. Currently publicly documented attacks focus on WSUS, which is commonly used in enterprise environments to distribute Windows updates. To identify the WSUS server, the attacker can use one of the following methods:
+        * Sniffing (see Austin)
+        * GPO parsing (see wsuks)
+        * Local or remote registry
+        * Others?
+
+    * **Step 2: Request the certificate for the server to be impersonated.**
         The attacker (`attacker@corp.local`) uses `certipy req` to request a certificate. They specify the vulnerable template (`VulnTemplate`) and provide the FQDN of the desired victim server (e.g., `wsus.corp.local`).
 
         The command to request the certificate:
@@ -3142,7 +3151,7 @@ Misconfigurations in AD CS can allow a low-privileged user to escalate privilege
         * `-target 'CA.CORP.LOCAL' -ca 'CORP-CA'`: Specifies the target CA name and its DNS/hostname.
         * `-template 'VulnTemplate'`: The ESC17 vulnerable template.
         * `-dns 'wsus.corp.local'`: The FQDN of the victim server to be embedded in the certificate's SAN.
-    
+
         **Expected Output Snippet:**
 
         ```text
@@ -3160,12 +3169,9 @@ Misconfigurations in AD CS can allow a low-privileged user to escalate privilege
 
         The output confirms that a certificate was issued. `Got certificate with DNS Host Name 'wsus.corp.local'` shows that the CA included the attacker-supplied identity information in the certificate. The certificate and its corresponding private key are saved to `wsus.pfx`.
 
-    * **Step 2: Impersonate the victim server.**
-        FIXME to be discussed -- How much should we go into detail? Typically, this wiki page doesn't link to external resources but describing everything:
+    * **Step 3: Impersonate the victim server.**
 
-      * is redundant (already done in other tooling/blog posts),
-      * has nothing to do with Certipy
-      * and might blow up should the community decide to look into this and add more exploitation examples.
+      TBD
 
 4. **Mitigations**
 

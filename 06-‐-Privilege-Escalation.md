@@ -3128,9 +3128,10 @@ Misconfigurations in AD CS can allow a low-privileged user to escalate privilege
     * **Step 1: Identifying a service to impersonate.**
 
         The attacker identifies a service that they can impersonate using a certificate with the "Server Authentication" EKU. Currently publicly documented attacks focus on WSUS, which is commonly used in enterprise environments to distribute Windows updates. To identify the WSUS server, the attacker can use one of the following methods:
-        * Sniffing (see Austin)
-        * GPO parsing (see wsuks)
-        * Local or remote registry
+        * Port scanning ([more info](https://trustedsec.com/blog/wsus-is-sus-ntlm-relay-attacks-in-plain-sight#Enumeration))
+        * Sniffing ([more info](https://trustedsec.com/blog/wsus-is-sus-ntlm-relay-attacks-in-plain-sight#Enumeration))
+        * GPO parsing ([more](https://trustedsec.com/blog/wsus-is-sus-ntlm-relay-attacks-in-plain-sight#Enumeration) [info](https://blog.digitrace.de/2026/01/using-adcs-to-attack-https-enabled-wsus-clients/#step-1-identify-the-wsus-server))
+        * Local or remote registry ([more info](https://blog.digitrace.de/2026/01/using-adcs-to-attack-https-enabled-wsus-clients/#step-1-identify-the-wsus-server))
         * Others?
 
     * **Step 2: Request the certificate for the server to be impersonated.**

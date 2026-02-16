@@ -3124,7 +3124,7 @@ Misconfigurations in AD CS can allow a low-privileged user to escalate privilege
         * GPO parsing (using [wsusspider.sh](https://trustedsec.com/blog/wsus-is-sus-ntlm-relay-attacks-in-plain-sight#Enumeration), [wsuks](https://blog.digitrace.de/2026/01/using-adcs-to-attack-https-enabled-wsus-clients/#step-1-identify-the-wsus-server))
         * Local or remote registry ([more info](https://blog.digitrace.de/2026/01/using-adcs-to-attack-https-enabled-wsus-clients/#step-1-identify-the-wsus-server))
 
-        Depending on the assignment, many other potential targets are possible. Essentially, an attacker needs to identify both promising domain accounts they would like to compromise and (TLS-protected) servers that these accounts interact with.
+        Depending on the assignment, many other potential targets are possible. Essentially, an attacker needs to identify a (TLS-protected) server or service that grants the attacker an advantage when controlled. Besides WSUS, other proprietery software management or rollout services could be interesting targets as well.
 
     * **Step 2: Request the certificate for the server to be impersonated.**
         The attacker (`attacker@corp.local`) uses `certipy req` to request a certificate. They specify the vulnerable template (`VulnTemplate`) and provide the FQDN of the desired victim server (e.g., `wsus.corp.local`).

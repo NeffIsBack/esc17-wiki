@@ -3059,7 +3059,7 @@ Misconfigurations in AD CS can allow a low-privileged user to escalate privilege
 
 2. **Identification with Certipy**
 
-   A full ESC17 attack chain does not rely solely on identifying a vulnerable template. One also needs some way to make use of a certificate by finding a desirable service (see "Further prerequisites" down below).
+   A full ESC17 attack chain does not rely solely on identifying a vulnerable template. One also needs some way to make use of a certificate by finding a desirable service (see "Exploitation" section for details).
 
    The first part, identification of a vulnerable template, can be achieved by using Certipy's `find` command in a very similar fashion to the way that ESC1 works.
    Certipy will specifically check for templates where the "Enrollee Supplies Subject" option is enabled, an EKU suitable for sever authentication is present, manager approval and authorized signatures are not required, and it lists the principals (users/groups) that have enrollment rights. The `[+] User Enrollable Principals` field in the output for a template will indicate if the current user context running Certipy has enrollment rights, and through which group membership these rights are granted.
@@ -3107,15 +3107,6 @@ Misconfigurations in AD CS can allow a low-privileged user to escalate privilege
     * `Extended Key Usage : Server Authentication` (or other relevant authentication EKUs) This confirms the certificate can be used for server impersonation.
     * `[+] User Enrollable Principals` showing a group like `CORP.LOCAL\Domain Users` or any group the attacker is a member of. This confirms the attacker has the necessary rights to request a certificate from this template.
     * `Requires Manager Approval : False` and `Authorized Signatures Required : 0` confirm the absence of preventative issuance controls.
-  
-    **Further prerequisites**
-
-   While the above-mentioned Certipy output confirms the general presence of a vulnerable template, its applicability for an offensive purpose goes beyond ADCS on its own. One also needs to identify a service that grants the attacker an advantage when impersonated **and** there must be some means to actually impersonate this service (think _arp spoofing_, _DNS poisoning_, potentially even _phishing_, ...).  At the time of writing, two attacks are publicly documented that both impersonate the Windows Server Update Service (WSUS) and:
-
-   * Relay incoming WSUS update requests to LDAP to impersonate the requesting client.
-   * Serve a malicious update to the requesting client achieving command execution.
-
-   Depending on the assignment, many other potential targets are possible. Essentially, an attacker needs to identify both promising domain accounts they would like to compromise and (TLS-protected) servers where they log into using their domain credentials.
 
 3. **Exploitation**
 
@@ -3133,6 +3124,8 @@ Misconfigurations in AD CS can allow a low-privileged user to escalate privilege
         * GPO parsing ([more](https://trustedsec.com/blog/wsus-is-sus-ntlm-relay-attacks-in-plain-sight#Enumeration) [info](https://blog.digitrace.de/2026/01/using-adcs-to-attack-https-enabled-wsus-clients/#step-1-identify-the-wsus-server))
         * Local or remote registry ([more info](https://blog.digitrace.de/2026/01/using-adcs-to-attack-https-enabled-wsus-clients/#step-1-identify-the-wsus-server))
         * Others?
+     
+        Depending on the assignment, many other potential targets are possible. Essentially, an attacker needs to identify both promising domain accounts they would like to compromise and (TLS-protected) servers that these accounts interact with.
 
     * **Step 2: Request the certificate for the server to be impersonated.**
         The attacker (`attacker@corp.local`) uses `certipy req` to request a certificate. They specify the vulnerable template (`VulnTemplate`) and provide the FQDN of the desired victim server (e.g., `wsus.corp.local`).
@@ -3171,8 +3164,12 @@ Misconfigurations in AD CS can allow a low-privileged user to escalate privilege
         The output confirms that a certificate was issued. `Got certificate with DNS Host Name 'wsus.corp.local'` shows that the CA included the attacker-supplied identity information in the certificate. The certificate and its corresponding private key are saved to `wsus.pfx`.
 
     * **Step 3: Impersonate the victim server.**
-
-      TBD
+      At the time of writing, two attacks against WSUS are publicly documented. See the referenced resources to learn more about how to execute these attacks in detail:
+  
+       * Relay incoming WSUS update requests to LDAP to impersonate the requesting client. ([resource](https://trustedsec.com/blog/wsus-is-sus-ntlm-relay-attacks-in-plain-sight))
+       * Serve a malicious update to the requesting client achieving command execution. ([resource](https://blog.digitrace.de/2026/01/using-adcs-to-attack-https-enabled-wsus-clients/))
+     
+      You may also try to attack other TLS-enabled services. The relay approach should be transferable relatively straight forward (make sure that `ntlmrelayx.py` listens on the correct port). Attacks that are more similar to the update injection need to be crafted individually. If you find something new, feel free to add it to this wiki.
 
 4. **Mitigations**
 

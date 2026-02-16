@@ -3123,8 +3123,7 @@ Misconfigurations in AD CS can allow a low-privileged user to escalate privilege
         * Sniffing ([more info](https://trustedsec.com/blog/wsus-is-sus-ntlm-relay-attacks-in-plain-sight#Enumeration))
         * GPO parsing (using [wsusspider.sh](https://trustedsec.com/blog/wsus-is-sus-ntlm-relay-attacks-in-plain-sight#Enumeration), [wsuks](https://blog.digitrace.de/2026/01/using-adcs-to-attack-https-enabled-wsus-clients/#step-1-identify-the-wsus-server))
         * Local or remote registry ([more info](https://blog.digitrace.de/2026/01/using-adcs-to-attack-https-enabled-wsus-clients/#step-1-identify-the-wsus-server))
-        * Others?
-     
+
         Depending on the assignment, many other potential targets are possible. Essentially, an attacker needs to identify both promising domain accounts they would like to compromise and (TLS-protected) servers that these accounts interact with.
 
     * **Step 2: Request the certificate for the server to be impersonated.**
@@ -3168,7 +3167,7 @@ Misconfigurations in AD CS can allow a low-privileged user to escalate privilege
   
        * Relay incoming WSUS update requests to LDAP to impersonate the requesting client. ([resource](https://trustedsec.com/blog/wsus-is-sus-ntlm-relay-attacks-in-plain-sight))
        * Serve a malicious update to the requesting client achieving command execution. ([resource](https://blog.digitrace.de/2026/01/using-adcs-to-attack-https-enabled-wsus-clients/))
-     
+
       You may also try to attack other TLS-enabled services. The relay approach should be transferable relatively straight forward (make sure that `ntlmrelayx.py` listens on the correct port). Attacks that are more similar to the update injection need to be crafted individually. If you find something new, feel free to add it to this wiki.
 
 4. **Mitigations**

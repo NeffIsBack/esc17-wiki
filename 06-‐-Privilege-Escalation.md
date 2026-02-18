@@ -3168,7 +3168,7 @@ Misconfigurations in AD CS can allow a low-privileged user to escalate privilege
        * Relay incoming WSUS update requests to LDAP to impersonate the requesting client. ([resource](https://trustedsec.com/blog/wsus-is-sus-ntlm-relay-attacks-in-plain-sight))
        * Serve a malicious update to the requesting client achieving command execution. ([resource](https://blog.digitrace.de/2026/01/using-adcs-to-attack-https-enabled-wsus-clients/))
 
-      You may also try to attack other services. The relay approach should be transferable relatively straight forward (make sure that `ntlmrelayx.py` listens on the correct port). Attacks that are more similar to the update injection need to be crafted individually. If you find something new, feel free to add it to this wiki.
+      You may also try to attack other TLS-enabled services. The relay approach should be transferable relatively straight forward (make sure that `ntlmrelayx.py` listens on the correct port). Attacks that are more similar to the update injection need to be crafted individually. If you find something new, feel free to add it to this wiki.
 
 4. **Mitigations**
 
